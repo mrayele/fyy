@@ -68,6 +68,18 @@ class Artist(db.Model):
     # eshows = db.relationship('Show', backref="gigs", lazy=True)
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+class Show(db.Show):
+  id = db.Column(db.Integer, primary_key=True)
+  description = db.Column(db.String)
+  venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
+  venue_name = db.Column(db.String)
+  venue_image_link = db.Column(db.String)
+  # area_id = db.Column(db.Integer, db.ForeignKey('area.id'))
+  artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'), nullable=False)
+  artist_name = db.Column(db.String)
+  artist_image_link = db.Column(db.String)
+  start_datetime = db.Column(db.DateTime)
+  end_datetime = db.Column(db.DateTime)
 
 #----------------------------------------------------------------------------#
 # Filters.
