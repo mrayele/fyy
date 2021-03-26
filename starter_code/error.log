@@ -52,3 +52,4 @@ NameError: name 'data' is not defined
 2021-03-26 18:22:28,194 INFO: errors [in /Users/mlab/Documents/fsnd/projects/fyyur/starter_code/app.py:518]
 2021-03-26 18:22:31,796 INFO: errors [in /Users/mlab/Documents/fsnd/projects/fyyur/starter_code/app.py:518]
 2021-03-26 18:34:50,459 INFO: errors [in /Users/mlab/Documents/fsnd/projects/fyyur/starter_code/app.py:523]
+2021-03-26 18:37:18,876 INFO: errors [in /Users/mlab/Documents/fsnd/projects/fyyur/starter_code/app.py:528]
