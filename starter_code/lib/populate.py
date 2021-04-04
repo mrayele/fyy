@@ -438,7 +438,7 @@ class Populate():
         # returns counter updated for successful inserts only
         return inserts
 
-    #
+    # inserts Show data taken from 
     # returns count of successful Show attribute inserts
     # PARAMETERS:
     # (none) list is generated from literal_data()
