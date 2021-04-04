@@ -1,16 +1,10 @@
 import psycopg2
 
-# functions for creating and executing queries 
 class Fdb():
-
-    # general purpose function to execute queries passed through a string
-    # initiates connection, executes a query and ends connection
-    # for SELECT queries, returns result if they are found and False if they are not
     def dbDo(query):
         conn = psycopg2.connect("dbname = fdb")
         cc = conn.cursor()
         cc.execute(query)
-        # for SELECT queries only:
         if (query.find("SELECT") > -1):
             result = cc.fetchall()
             if (isinstance(result, list) and (len(result) > 0)):
@@ -21,15 +15,8 @@ class Fdb():
         conn.close()
         cc.close()
 
-    # forms a query to alter values for an entity using a nested list of key:value pairs
-    #   value_list: list of keys and values for entity instance being inserted
-    #       in the form of [ [key, value], [key, value], [key, value], ...]
-    #.      taken from dictionary format
-    #   tablename: name of entity being altered
     def insert_values(value_list, tablename):
 
-        # iterates through list of values and forms a string query from them
-        # returns the 
         def insert_query(value_list, tablename):
             column_string = "("
             value_string = "("
@@ -54,11 +41,6 @@ class Fdb():
         result = Fdb.dbDo(query)
         return result
 
-    # updates values for a specific attribute of an entity
-    #   columnname:
-    #   newvalue:
-    #   condition_list:
-    #.  tablename:
     def update_values(columnname, newvalue, condition_list, tablename):
         def update_value_list(columnname, newvalue, pairs, tablename):
             q1 = "UPDATE " + tablename
@@ -119,12 +101,7 @@ class Fdb():
         else:
             return False
 
-
-# contains functions to manipulate start and end dates
-# 
 class Temporal():
-
-    # creates a dictionary format of a datetime object
     def show_date_info(dd):
         ed = {}
         ed['date'] = dd['date']
@@ -135,7 +112,6 @@ class Temporal():
         ed['sec'] = "59"
         return ed
 
-    # creates a dictionary format of a datetime object
     def parse_date(date_string):
         date = {}
         date["default_end"] = date_string[:11] + "23:59:59.00Z"
@@ -147,9 +123,7 @@ class Temporal():
         date["sec"] = "00"
         return date
 
-# 
 class Format():
-    # 
     def string_to_list(list_string):
         list_string = list_string[1:-1]
         if list_string.find(",") > 0:
@@ -350,20 +324,6 @@ class Given():
     genre_list = []
 
 class Populate():
-
-    # modifies data from 'artist' or 'venue' dicts to create dict for 'show' entry
-    # returns nothing; updates dictionary object as it iterates through a list of objects
-    # REQUIRED PARAMETERS: 
-    # tablename: name of type of information from which dict object originates
-    # id: id attribute specific to either Artist or Venue attribute
-    # name: name of the object represented in the dict
-    # image_link: link to image representing dict object 
-    # show_dict_list: object belonging to original dict 
-    # OTHER VARIABLES:
-    # id_key: represents id in altered dict
-    # name_key: represents name in altered dict
-    # image_key: represents image in altered dict
-    # show_dict: dict 
     class Prep():
         def show_data(tablename, id, name, image_link, show_dict_list):
             if tablename == "artist":
@@ -380,98 +340,47 @@ class Populate():
                 show_dict[image_key] = image_link
                 Given.show_dict_list.append(show_dict)
 
-    # 
-    # returns count of objects successfully inserted into database
-    # PARAMETERS: 
-    # given_dict_lisT: list of objects (instances) to insert to database in dictionary format
-    # params: list of all possible attributes in table object will become instance of
-    # tablename: name of entity query will be preformed on
-    # LOCAL VARIABLES: 
-    # insert_list: list to contain nested pairs of key:value pairs
-    # show_dict_list: list to contain show dicts stored from 'parent' dict objects
     def literal_data(given_dict_list, params, tablename):
-        inserts = 0 #counter
-        # loop through specific dictionary object, sorting data (verbosely)
+        inserts = 0
         for given_dict in given_dict_list:
             insert_list = []
             show_dict_list = []
-            # LEGASY COMMENT: add all given values to insert list
-            # ACTUAL COMMENTS:
-            # sorts 
-            for artist_key in given_dict: #name not updated when fuction was :/
-                # sets entity attribute value as artist_value; needs better name. 
+            # add all given values to insert list
+            for artist_key in given_dict:
                 artist_value = given_dict[artist_key]
-                # checks if value is a list
-                # if it is, branches further based on the type of list
                 if isinstance(artist_value, list):
-                    # handles genre list (lists of strings that will be in the Genre entity)
-                    # adds relevant information to process genres later
                     if (artist_key == "genres"):
-                        # format genre to make it insertable
+                    # format genre to make it insertable
                         Given.genre_list.append([artist_value, tablename, given_dict['id']])
                         insert_list.append([artist_key, artist_value])
-                    # handles lists that aren't genres (they must be a list of show dicts)
                     elif len(artist_value) > 0:
                     # add show entry to show entry list
                         for item in artist_value:
                             show_dict_list.append(item)
-                # if the value is not a list, adds it to the (nested) INSERT list as [key, value]
                 elif (artist_key in params):
                     insert_list.append([artist_key, artist_value])
-            # checks if the name of the dict object exists already in the database
-            # if it is not, forms/operates query using Fdb class function
-            # if it is, 
             name_match = [['name', given_dict['name']]]
             if not (Fdb.match_values(name_match, tablename)):
                 Fdb.insert_values(insert_list, tablename)
                 inserts += 1
-                # verifies successful insertion with retrieval of instance's id variable
-                # updates id value of variable with instance's assigned pk
                 id = Fdb.select_values(False, name_match, tablename)[0][0]
             else:
-                # updates id value of variable to found instance's assigned id (if successful)
                 id = Fdb.select_values(False, name_match, tablename)[0][0]
-            # prepares list of show objects for later use
             Populate.Prep.show_data(tablename, id, given_dict['name'], given_dict['image_link'], show_dict_list)
-        # prints results to terminal
         Status.table_inserts(inserts, tablename)
-        # returns counter updated for successful inserts only
         return inserts
 
-    #
-    # returns count of successful Show attribute inserts
-    # PARAMETERS:
-    # (none) list is generated from literal_data()
-    # Given.show_dict_list is global variable used to function
-    # LOCAL VARIABLES: 
-    # inserts: count of successful inserts in iteration
-    # listing: dict object within Given.show_dict_list
-    # item: key:value pair in listing
-    # show_ley: key within item pair
-    # show_value: value within item pair
-    # show_dict_list: list of [key][value] pairs to insert
-    # sd_dict: starting time, stored as new dict. From show object data
-    # ed_dict: ending time. Automatically 11:59:59 PM on the same date the event started
     def show_data():
-        inserts = 0 #counter
-        # iterate through each object in Given.show_dict_list
+        inserts = 0
         for listing in Given.show_dict_list:
             show_dict_list = []
-            # iterate through each key:value pair in Given.show_dict_list
             for item in listing:
                 show_key = item
                 show_value = str(listing[item])
                 show_dict_list.append([show_key, show_value])
-                # handle strings representing time differently; anticipates Schedule entity
-                # if key is "start_time", call Temporal.parse_date() for start date
-                #    and Temporal.show_date_info(sd_dict) to create end date
                 if show_key == "start_time":
                     sd_dict = Temporal.parse_date(show_value)
                     ed_dict = Temporal.show_date_info(sd_dict)
-                    # loop through sd_dict
-                    # if key is "default_end", add key (start_foo) to sd_date where key = foo 
-                    # else add 'end time' key with value sd_dict[foo]
-                    # !!! not sure if this should stay and be changed or completely go
                     for t in sd_dict:
                         if not (t == "default_end"):
                             show_dict_list.append([("start_" + t), sd_dict[t]])
@@ -479,54 +388,29 @@ class Populate():
                             show_dict_list.append(["end_time", sd_dict[t]])
                     for t in ed_dict:
                         show_dict_list.append([("end_" + t), ed_dict[t]])
-            # if show object doesn't exist in the database, add it and increase counter. 
-            # Else, do nothing. 
             if not (Fdb.match_values(show_dict_list, "show")):
                 Fdb.insert_values(show_dict_list, "show")
                 inserts += 1
-        # return count of inserts
         return inserts
 
-    # add new area to Area entity if it doesn't already exist
-    # return nested list of ([city, state, (default)name], tablename)
-    # REQUIRED PARAMETERS:
-    # listing: item in Given.Venue.dicts || Given.Artist.dicts
-    # tablename: either 'Artist' or 'Venue'; determines which table to be queried
     def area_list(listing, tablename):
-        # get city, state and name values from listing (dict object)
         city = listing['city']
         state = listing['state']
         name = city + ", " + state
-        # create insert_list similar to [key, value] lists used elsewhere
         insert_list = [['city', city],
             ['state', state],
             ['name', name]]
-        # if tablename is venue, assign the Venue instance id to venue_id
-        # return insert_list and venue_id to area() function
         if (tablename == 'venue'):
             venue_id = listing['id']
             return (insert_list, venue_id)
-        # if tablename is artist_ assign the Artist instance id to artist_id
-        # return insert_list and artist_id to area() function
         elif (tablename == 'artist'):
             artist_id = listing['id']
             return (insert_list, artist_id)
 
-    # WHO EVEN KNOWS?
-    # returns (inserts, updates, area_id)
-    # REQUIRED PARAMETERS:
-    # listing_tuple: 
-    # tablename: name of table query is (eventually) to be executed on
-    # LOCAL VARIABLES: 
-    # select_key: altered tablename for abosolutely no reason, waste of space 
-    # inserts: successful Area instance inserts (new area created)
-    # updates: successful updates to existing tables
     def venue_areas(listing_tuple, tablename):
         select_key = tablename + "s"
         inserts = 0
         updates = 0
-        # If area exists, check if 'parent' object contains area_id
-        # If area doesn't exist, insert it (and update parent object ?)
         if Fdb.match_values(listing_tuple[0], 'area'):
             result = Fdb.select_values([select_key], listing_tuple[0],
                 'area')[0][0]
@@ -549,32 +433,21 @@ class Populate():
         area_id = Fdb.select_values(['id'], listing_tuple[0], 'area')[0][0]
         return (inserts, updates, area_id)
 
-    # Inserts instances of Area based on Venue data
-    # updates Venue and Artist instances with area id
-    # returns total changes (inserts + updates) from current iteration
     def area():
-        inserts = 0 # counts successful inserts
-        updates = 0 # counts successful updates
-        artist_updates = 0 # counts updates on Artist entity
-        venue_updates = 0 # counts updates on Venue entity
-        # OH GOOD THE SAME CODE TWICE
-        # HOW QUAINT 
-        # iterate through Venue dictionary list
+        inserts = 0
+        updates = 0
+        artist_updates = 0
+        venue_updates = 0
         for listing in Given.Venue.dicts:
-            # get attribute list and retaining tablename as 2d list
             result = Populate.area_list(listing, "venue")
-            id = result[1] # RENAME THIS
-            # do the insert and update thing
+            id = result[1]
             result = Populate.venue_areas(result, "venue")
-            # increment counters
             inserts += result[0]
             updates += result[1]
             area_id = result[2]
-            # update 'parent object' if it wasn't already
             if not (Fdb.select_values(['area_id'], [['id', id]], "venue")[0][0]):
                 Fdb.update_values('area_id', area_id, [['id', id]], "venue")
                 venue_updates += 1
-        # AGAIN, WITH FEELING!
         for listing in Given.Artist.dicts:
             result = Populate.area_list(listing, "artist")
             id = result[1]
@@ -585,29 +458,15 @@ class Populate():
             if not (Fdb.select_values(['area_id'], [['id', id]], "artist")[0][0]):
                 Fdb.update_values('area_id', area_id, [['id', id]], "artist")
                 artist_updates += 1
-        # print status of iterations after both loops are completed
         Status.table_inserts(inserts, "area")
         Status.table_updates(updates, "area")
         Status.table_updates(venue_updates, "venue")
         Status.table_updates(artist_updates, "artist")
-        # return total sum of changes
         return inserts + updates
 
-    # adds new genres to Genre
-    # returns count of successful inserts
-    # REQUIRED PARAMETERS: 
-    # (none) list is generated from literal_data()
-    # LOCAL VARIABLES: 
-    # item: dict in Given.genre_list, created in Populate.literal_data()
-    # genre: string object in genre list 
     def genre():
         inserts = 0
-        # iterate through genre_list
         for item in Given.genre_list:
-            # for each String genre, create list for possible insert query
-            # query to check for existing entry
-            # if genre is not already in the database, inert it
-            # otherwise, do nothing
             for genre in item[0]:
                 insert_list = [['name', genre], ['reference_type', item[1]],
                     ['reference_id', item[2]]]
@@ -615,22 +474,10 @@ class Populate():
                     if not Fdb.match_values([['name', genre]], "gref"):
                         Fdb.insert_values([['name', genre]], "gref")
                     Fdb.insert_values(insert_list, "genre")
-                    # when an insert is made, update it
                     inserts += 1
         Status.table_inserts(inserts, "genre")
         return inserts
 
-    # !!! REDO !!!
-    # runs after all other 'control' functions have been called
-    # selects show from database and adds it to schedule entity
-    # REQUIRED PARAMETERS: 
-    # (none) data is taken from database queries
-    # LOCAL VARIABLES: 
-    # show_info: result from database query
-    # result_list: results, stored within show_info as a list
-    # match_list: list of values identifying unique show
-    #    note: logical error
-    # insert_values: required information for Sechedule instance
     def schedule():
         inserts = 0
         show_info = Fdb.select_values(['id', 'start_date', 'start_month',
@@ -655,33 +502,11 @@ class Populate():
 
 changes = 0
 inserts = 0
-# populate database with the dummy data given for Artist attributes
-# requires Artist and Artist entities to have been created in SQLAlchemy
-# ?? Does not execute if Artist entity is not found
 changes += Populate.literal_data(Given.Artist.dicts, Given.Artist.params, "artist")
-
-# populate database with the dummy data given for Venue attributes
-# requires Artist and Venue entities to have been created in SQLAlchemy
-# ?? Does not execute if Venue entity is not found
 changes += Populate.literal_data(Given.Venue.dicts, Given.Venue.params, "venue")
-
-# populate database with dummy data within Artist and Show dummy data
-# requires Show entity to have been created in SQLAlchemy 
-# ?? Does not execute if Show attribute has not been found
 changes += Populate.show_data()
-
-# populate Area data with areas formed from city and state dummy data
-# requires Area entity to have been created in SQLAlchemy
-# ?? Does not execute if Area attribute has not been found
 changes += Populate.area()
-
-# populate Genre data with genres from dummy data lists
-# requires Genre entity to have been created in SQLAlchemy
-# ?? Does not execute if Genre attribute has not been found
 changes += Populate.genre()
-
-# requires Area entity to have been created in SQLAlchemy
-# ?? Does not execute if Area attribute has not been found
 changes += Populate.schedule()
 
 Status.final_changes(changes, inserts)
